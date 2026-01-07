@@ -692,7 +692,8 @@ class CliArgs:
         )
         instance_dir.mkdir(parents=True, exist_ok=True)
 
-        fix_patch_path = instance_dir.absolute() / "fix.patch"
+        # Write directly to the expected patch path inside of the instance container
+        fix_patch_path = instance.dependency().fix_patch_path()
         with open(fix_patch_path, "w", encoding="utf-8", newline="\n") as f:
             f.write(self.patches[instance.pr.id].fix_patch)
 
@@ -714,12 +715,6 @@ class CliArgs:
                 run_command,
                 output_path,
                 self.global_env,
-                volumes={
-                    fix_patch_path: {
-                        "bind": instance.dependency().fix_patch_path(),
-                        "mode": "rw",
-                    }
-                },
             )
             return output
 
