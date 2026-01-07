@@ -271,7 +271,7 @@ class CliArgs:
         if not isinstance(self.workdir, Path):
             raise ValueError(f"Invalid workdir: {self.workdir}")
         if not self.workdir.exists():
-            raise ValueError(f"Workdir not found: {self.workdir}")
+            self.workdir.mkdir(parents=True, exist_ok=True)
 
     def _check_patch_files(self):
         if not self.patch_files:
@@ -327,7 +327,7 @@ class CliArgs:
         if not isinstance(self.repo_dir, Path):
             raise ValueError(f"Invalid repo_dir: {self.repo_dir}")
         if not self.repo_dir.exists():
-            raise ValueError(f"Repo dir not found: {self.repo_dir}")
+            self.repo_dir.mkdir(parents=True, exist_ok=True)
 
     def _check_log_dir(self):
         if not self.log_dir:
