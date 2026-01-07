@@ -692,7 +692,9 @@ class CliArgs:
         )
         instance_dir.mkdir(parents=True, exist_ok=True)
 
-        # Write directly to the expected patch path inside of the instance container
+        # We are already inside of the instance container,
+        # so instead of making a patch file and then mounting it,
+        # we save the patch directly to the expected mounted path.
         fix_patch_path = instance.dependency().fix_patch_path()
         with open(fix_patch_path, "w", encoding="utf-8", newline="\n") as f:
             f.write(self.patches[instance.pr.id].fix_patch)

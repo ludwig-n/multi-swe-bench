@@ -49,7 +49,7 @@ def run(
 
 
 # Copied from https://github.com/Kipok/SWE-bench/blob/0f341d38df5ca749c74eff61b06033a2c9b2793e/swebench/harness/run_local_evaluation.py#L73
-# We don't use timeout here
+# In the original Multi-SWE-bench code, there was no timeout for Docker commands, so we don't use it either.
 def exec_run_with_timeout(cmd, timeout: int | None = None):
     """
     Run a command locally with a timeout.
