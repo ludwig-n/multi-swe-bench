@@ -14,58 +14,20 @@
 
 import logging
 from pathlib import Path
+import threading
+import time
+import subprocess
 from typing import Optional, Union
-
-import docker
-
-docker_client = docker.from_env()
 
 
 def exists(image_name: str) -> bool:
-    try:
-        docker_client.images.get(image_name)
-        return True
-    except docker.errors.ImageNotFound:
-        return False
+    return True
 
 
 def build(
     workdir: Path, dockerfile_name: str, image_full_name: str, logger: logging.Logger
 ):
-    workdir = str(workdir)
-    logger.info(
-        f"Start building image `{image_full_name}`, working directory is `{workdir}`"
-    )
-    try:
-        build_logs = docker_client.api.build(
-            path=workdir,
-            dockerfile=dockerfile_name,
-            tag=image_full_name,
-            rm=True,
-            forcerm=True,
-            decode=True,
-            encoding="utf-8",
-        )
-
-        for log in build_logs:
-            if "stream" in log:
-                logger.info(log["stream"].strip())
-            elif "error" in log:
-                error_message = log["error"].strip()
-                logger.error(f"Docker build error: {error_message}")
-                raise RuntimeError(f"Docker build failed: {error_message}")
-            elif "status" in log:
-                logger.info(log["status"].strip())
-            elif "aux" in log:
-                logger.info(log["aux"].get("ID", "").strip())
-
-        logger.info(f"image({workdir}) build success: {image_full_name}")
-    except docker.errors.BuildError as e:
-        logger.error(f"build error: {e}")
-        raise e
-    except Exception as e:
-        logger.error(f"Unknown build error occurred: {e}")
-        raise e
+    pass
 
 
 def run(
@@ -75,34 +37,67 @@ def run(
     global_env: Optional[list[str]] = None,
     volumes: Optional[Union[dict[str, str], list[str]]] = None,
 ) -> str:
-    container = None
-    try:
-        container = docker_client.containers.run(
-            image=image_full_name,
-            command=run_command,
-            remove=False,
-            detach=True,
-            stdout=True,
-            stderr=True,
-            environment=global_env,
-            volumes=volumes,
-        )
+    assert not global_env, "global_env is not supported for now"
+    assert not volumes, "volumes are not supported for now"
 
-        output = ""
-        if output_path:
-            with open(output_path, "w", encoding="utf-8") as f:
-                for line in container.logs(stream=True, follow=True):
-                    line_decoded = line.decode("utf-8")
-                    f.write(line_decoded)
-                    output += line_decoded
-        else:
-            container.wait()
-            output = container.logs().decode("utf-8")
+    output, _, _ = exec_run_with_timeout(run_command, timeout=None)
 
-        return output
-    finally:
-        if container:
+    if output_path is not None:
+        output_path.write_text(output)
+
+    return output
+
+
+# Copied from https://github.com/Kipok/SWE-bench/blob/0f341d38df5ca749c74eff61b06033a2c9b2793e/swebench/harness/run_local_evaluation.py#L73
+# We don't use timeout here
+def exec_run_with_timeout(cmd, timeout: int | None = None):
+    """
+    Run a command locally with a timeout.
+
+    Args:
+        cmd (str): Command to run.
+        timeout (int): Timeout in seconds.
+    """
+    # Local variables to store the result of executing the command
+    exec_result = b""
+    process = None
+    exception = None
+    timed_out = False
+
+    # Wrapper function to run the command
+    def run_command():
+        nonlocal exec_result, process, exception
+        try:
+            process = subprocess.Popen(
+                cmd,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=False
+            )
+            exec_result, _ = process.communicate()
+        except Exception as e:
+            exception = e
+
+    # Start the command in a separate thread
+    thread = threading.Thread(target=run_command)
+    start_time = time.time()
+    thread.start()
+    thread.join(timeout)
+
+    if exception:
+        raise exception
+
+    # If the thread is still alive, the command timed out
+    if thread.is_alive():
+        if process is not None:
             try:
-                container.remove(force=True)
-            except Exception as e:
-                print(f"Warning: Failed to remove container: {e}")
+                process.terminate()
+                # Give it a moment to terminate gracefully
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        timed_out = True
+    end_time = time.time()
+    return exec_result.decode(), timed_out, end_time - start_time
