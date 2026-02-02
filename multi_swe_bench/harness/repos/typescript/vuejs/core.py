@@ -135,7 +135,14 @@ pnpm install || true
 set -e
 
 cd /home/{pr.repo}
-pnpm run test-unit --no-watch --reporter=verbose --retry=5
+
+# Use retry option if this version of vitest supports it
+if [[ $(pnpm exec vitest --help | grep '\--retry') ]]
+then
+    pnpm run test-unit --no-watch --reporter=verbose --retry=5
+else
+    pnpm run test-unit --no-watch --reporter=verbose
+fi
 
 """.format(pr=self.pr),
             ),
@@ -147,7 +154,14 @@ set -e
 
 cd /home/{pr.repo}
 git apply /home/test.patch
-pnpm run test-unit --no-watch --reporter=verbose --retry=5
+
+# Use retry option if this version of vitest supports it
+if [[ $(pnpm exec vitest --help | grep '\--retry') ]]
+then
+    pnpm run test-unit --no-watch --reporter=verbose --retry=5
+else
+    pnpm run test-unit --no-watch --reporter=verbose
+fi
 
 """.format(pr=self.pr),
             ),
@@ -159,7 +173,14 @@ set -e
 
 cd /home/{pr.repo}
 git apply /home/test.patch /home/fix.patch
-pnpm run test-unit --no-watch --reporter=verbose --retry=5
+
+# Use retry option if this version of vitest supports it
+if [[ $(pnpm exec vitest --help | grep '\--retry') ]]
+then
+    pnpm run test-unit --no-watch --reporter=verbose --retry=5
+else
+    pnpm run test-unit --no-watch --reporter=verbose
+fi
 
 """.format(pr=self.pr),
             ),
