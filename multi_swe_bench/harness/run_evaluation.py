@@ -692,6 +692,22 @@ class CliArgs:
         )
         instance_dir.mkdir(parents=True, exist_ok=True)
 
+        # For instances where test commands are modified in the fork (currently only in the vuejs/core repo),
+        # we need to update the run.sh, test-run.sh, fix-run.sh scripts to their new contents.
+        # By default they are preloaded into the environment.
+        if instance.repo_name == "vuejs/core":
+            files = instance.dependency().files()
+            for script_name in ["run.sh", "test-run.sh", "fix-run.sh"]:
+                new_content = None
+                for file in files:
+                    if file.name == script_name:
+                        new_content = file.content
+                        break
+                else:
+                    raise ValueError(f"File contents not defined: {script_name}")
+                Path(f"/home/{script_name}").write_text(new_content)
+                self.logger.info(f"Contents of /home/{script_name} were overwritten with:\n{new_content}")
+
         # We are already inside of the instance container,
         # so instead of making a patch file and then mounting it,
         # we save the patch directly to the expected mounted path.
