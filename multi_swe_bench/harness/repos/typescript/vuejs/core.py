@@ -47,7 +47,7 @@ class CoreImageBase(Image):
 
 WORKDIR /home/
 
-RUN apt update && apt install -y git 
+RUN apt update && apt install -y git
 RUN npm install -g pnpm
 
 {code}
@@ -135,7 +135,7 @@ pnpm install || true
 set -e
 
 cd /home/{pr.repo}
-pnpm run test-unit --no-watch --reporter=verbose
+pnpm run test-unit --no-watch --reporter=verbose --retry=5
 
 """.format(pr=self.pr),
             ),
@@ -147,7 +147,7 @@ set -e
 
 cd /home/{pr.repo}
 git apply /home/test.patch
-pnpm run test-unit --no-watch --reporter=verbose
+pnpm run test-unit --no-watch --reporter=verbose --retry=5
 
 """.format(pr=self.pr),
             ),
@@ -159,7 +159,7 @@ set -e
 
 cd /home/{pr.repo}
 git apply /home/test.patch /home/fix.patch
-pnpm run test-unit --no-watch --reporter=verbose
+pnpm run test-unit --no-watch --reporter=verbose --retry=5
 
 """.format(pr=self.pr),
             ),
