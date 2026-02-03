@@ -57,6 +57,18 @@ RUN npm install -g pnpm
 """
 
 
+RUN_TESTS = """
+# If this version of vitest does not support retries, upgrade to the minimum version that does
+if [[ ! $(pnpm exec vitest --help | grep '\--retry') ]]
+then
+    pnpm install -w vitest@0.32.3
+fi
+
+# Run tests with retries
+pnpm run test-unit --no-watch --reporter=verbose --retry=10
+"""
+
+
 class CoreImageDefault(Image):
     def __init__(self, pr: PullRequest, config: Config):
         self._pr = pr
@@ -135,16 +147,9 @@ pnpm install || true
 set -e
 
 cd /home/{pr.repo}
+{RUN_TESTS}
 
-# Use retry option if this version of vitest supports it
-if [[ $(pnpm exec vitest --help | grep '\--retry') ]]
-then
-    pnpm run test-unit --no-watch --reporter=verbose --retry=5
-else
-    pnpm run test-unit --no-watch --reporter=verbose
-fi
-
-""".format(pr=self.pr),
+""".format(pr=self.pr, RUN_TESTS=RUN_TESTS),
             ),
             File(
                 ".",
@@ -154,16 +159,9 @@ set -e
 
 cd /home/{pr.repo}
 git apply /home/test.patch
+{RUN_TESTS}
 
-# Use retry option if this version of vitest supports it
-if [[ $(pnpm exec vitest --help | grep '\--retry') ]]
-then
-    pnpm run test-unit --no-watch --reporter=verbose --retry=5
-else
-    pnpm run test-unit --no-watch --reporter=verbose
-fi
-
-""".format(pr=self.pr),
+""".format(pr=self.pr, RUN_TESTS=RUN_TESTS),
             ),
             File(
                 ".",
@@ -173,16 +171,9 @@ set -e
 
 cd /home/{pr.repo}
 git apply /home/test.patch /home/fix.patch
+{RUN_TESTS}
 
-# Use retry option if this version of vitest supports it
-if [[ $(pnpm exec vitest --help | grep '\--retry') ]]
-then
-    pnpm run test-unit --no-watch --reporter=verbose --retry=5
-else
-    pnpm run test-unit --no-watch --reporter=verbose
-fi
-
-""".format(pr=self.pr),
+""".format(pr=self.pr, RUN_TESTS=RUN_TESTS),
             ),
         ]
 
